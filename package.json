@@ -1,10 +1,10 @@
 {
-  "name": "masterchief",
+  "name": "@underghost/masterchief",
   "version": "1.0.0",
   "description": "Determine the top contributors for files in your project",
   "main": "index.js",
   "bin": {
-    "masterchief": "./index.js"
+    "masterchief": "index.js"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -16,5 +16,13 @@
     "owners"
   ],
   "author": "underghost",
-  "license": "ISC"
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/underGhost/masterchief.git"
+  },
+  "bugs": {
+    "url": "https://github.com/underGhost/masterchief/issues"
+  },
+  "homepage": "https://github.com/underGhost/masterchief#readme"
 }

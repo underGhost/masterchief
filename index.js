@@ -27,7 +27,7 @@ const excludedExtensionsOpt = getArg("-x"); // Excluded extensions
 const includedExtensionsOpt = getArg("-i"); // Included extensions
 
 const outputPath = outputArg ? `${path.resolve(outputArg)}/` : "./";
-const outputFileName = "owner_report";
+const outputFileName = "masterchief_report";
 const outputFile = `${outputPath}${outputFileName}.json`;
 
 let filesString = execSync(`git ls-files ${filePath || ""}`, { maxBuffer }).toString();

@@ -1,8 +1,12 @@
 #!/usr/bin/env node
 
-const { execSync } = require("child_process");
+const { spawnSync } = require("child_process");
 const { writeFileSync, lstatSync, readdirSync } = require("fs");
 const path = require("path");
+
+const spawnOptions = {
+    encoding: "utf-8"
+};
 
 const myArgs = process.argv.slice(2);
 
@@ -17,11 +21,9 @@ const getArg = (command) => {
     return val;
 };
 
-const maxBuffer = 1024 * 5000;
-
 // Arguments
 const filePath = getArg("-p"); // Path to a single file or directory
-const username = getArg("-u"); // Username according to git (ie: Devin Corrow)
+const emailFilter = getArg("-e"); // Username according to git (ie: Devin Corrow)
 const outputArg = getArg("-o"); // Output file path
 const excludedExtensionsOpt = getArg("-x"); // Excluded extensions
 const includedExtensionsOpt = getArg("-i"); // Included extensions
@@ -30,7 +32,7 @@ const outputPath = outputArg ? `${path.resolve(outputArg)}/` : "./";
 const outputFileName = "masterchief_report";
 const outputFile = `${outputPath}${outputFileName}.json`;
 
-let filesString = execSync(`git ls-files ${filePath || ""}`, { maxBuffer }).toString();
+const { stdout: filesString } = spawnSync("git", ["ls-files", `${filePath || "."}`], spawnOptions);
 let filesArr = filesString.split(/\r?\n/);
 
 if (excludedExtensionsOpt) {
@@ -41,7 +43,7 @@ if (excludedExtensionsOpt) {
     filesArr = filesArr.filter((f) => includedExtensions.some((ext) => f.includes(`.${ext}`)));
 }
 
-const NAME_RE = /\(([A-z]+[\s|.]?[A-z]+)\s+.*\)/;
+const EMAIL_RE = /.*<((?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\]))>.*/;
 
 // get files
 const fileReport = {};
@@ -49,18 +51,18 @@ const fileReport = {};
 for (index in filesArr) {
     const file = filesArr[index];
     if (file) {
-        const fileBlames = execSync(`git blame ${file}`, { maxBuffer }).toString();
+        const { stdout: fileBlames } = spawnSync("git", ["blame", file, "-e"], spawnOptions);
         const lines = fileBlames.split(/\r?\n/);
         const contributors = {};
 
         for (line of lines) {
-            const name = line.match(NAME_RE);
-            if (name && name[1]) {
-                if (username === name[1] || !username) {
-                    if (!contributors[name[1]]) {
-                        contributors[name[1]] = 0;
+            const email = line.match(EMAIL_RE);
+            if (email && email[1]) {
+                if (emailFilter === email[1] || !emailFilter) {
+                    if (!contributors[email[1]]) {
+                        contributors[email[1]] = 0;
                     }
-                    contributors[name[1]]++;
+                    contributors[email[1]]++;
                 }
             }
         }

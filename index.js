@@ -28,9 +28,7 @@ const outputArg = getArg("-o"); // Output file path
 const excludedExtensionsOpt = getArg("-x"); // Excluded extensions
 const includedExtensionsOpt = getArg("-i"); // Included extensions
 
-const outputPath = outputArg ? `${path.resolve(outputArg)}/` : "./";
 const outputFileName = "masterchief_report";
-const outputFile = `${outputPath}${outputFileName}.json`;
 
 const { stdout: filesString } = spawnSync("git", ["ls-files", `${filePath || "."}`], spawnOptions);
 let filesArr = filesString.split(/\r?\n/);
@@ -53,32 +51,60 @@ for (index in filesArr) {
     if (file) {
         const { stdout: fileBlames } = spawnSync("git", ["blame", file, "-e"], spawnOptions);
         const lines = fileBlames.split(/\r?\n/);
-        const contributors = {};
+        const rawContributors = {};
 
         for (line of lines) {
             const email = line.match(EMAIL_RE);
             if (email && email[1]) {
                 if (emailFilter === email[1] || !emailFilter) {
-                    if (!contributors[email[1]]) {
-                        contributors[email[1]] = 0;
+                    if (!rawContributors[email[1]]) {
+                        rawContributors[email[1]] = 0;
                     }
-                    contributors[email[1]]++;
+                    rawContributors[email[1]]++;
                 }
             }
         }
 
-        if (Object.keys(contributors).length) {
-            fileReport[file] = {};
-            fileReport[file].contributors = contributors;
-            fileReport[file].total_lines = Object.values(fileReport[file].contributors).reduce((a, b) => a + b);
-            fileReport[file].top_contributor = Object.keys(fileReport[file].contributors).reduce((keyA, keyB) =>
-                fileReport[file].contributors[keyA] < fileReport[file].contributors[keyB] ? keyB : keyA
+        if (Object.keys(rawContributors).length) {
+            const contributors = Object.entries(rawContributors).sort((a, b) => b[1] - a[1]).reduce((acc, entry) => {
+                acc[entry[0]] = entry[1];
+            return acc;
+            }, {});
+
+            const totalLines = Object.values(rawContributors).reduce((a, b) => a + b);
+
+            const topContributor = Object.keys(rawContributors).reduce((keyA, keyB) =>
+                contributors[keyA] < contributors[keyB] ? keyB : keyA
             );
+
+            if (outputArg) {
+                fileReport[file] = {
+                    contributors,
+                    total_lines: totalLines,
+                    top_contributor: topContributor
+                };
+            } else {
+                console.log(`
+${file}:
+    [-- Contributors --]
+    ${Object.entries(contributors).map(c => `${c[0]}: ${c[1]}`).join("\r\n")}
+
+    [-- Total Lines --]
+    ${totalLines}
+
+    [-- Top Contributor --]
+    ${topContributor}
+                `);
+            }
         }
     }
 }
 
-// output report
-writeFileSync(outputFile, JSON.stringify(fileReport));
+if (outputArg) {
+    const outputPath = outputArg ? `${path.resolve(outputArg)}/` : "./";
+    const outputFile = `${outputPath}${outputFileName}.json`;
+    // output report
+    writeFileSync(outputFile, JSON.stringify(fileReport));
+    console.log(`[Success]: File generated: ${outputFile}`);
+}
 
-console.log(`[Success]: File generated: ${outputFile}`);
